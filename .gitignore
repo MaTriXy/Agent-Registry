@@ -1,0 +1,20 @@
+# Claude Code local settings
+.claude/
+
+# User-specific generated files (created by init_registry.py during migration)
+references/registry.json
+agents/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Test artifacts
+.pytest_cache/
+.coverage
+
+# OS files
+.DS_Store
