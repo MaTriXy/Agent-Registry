@@ -144,7 +144,12 @@ Registry stores only metadata — not full agent content:
 
 Install via Skills CLI (one command):
 ```bash
-npx skills find MaTriXy/Agent-Registry
+npx skills add MaTriXy/Agent-Registry@agent-registry
+```
+
+Discover skills interactively:
+```bash
+npx skills find
 ```
 
 Update existing skills:

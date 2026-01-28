@@ -67,7 +67,10 @@ python scripts/get_agent.py security-auditor
 
 ```bash
 # Using Skills CLI (recommended)
-npx skills find MaTriXy/Agent-Registry
+npx skills add MaTriXy/Agent-Registry@agent-registry
+
+# Discover skills interactively
+npx skills find
 
 # Update existing skills
 npx skills update
