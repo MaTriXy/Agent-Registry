@@ -140,16 +140,16 @@ Registry stores only metadata — not full agent content:
 - Node.js 14+ (for NPX installation method)
 - Git (for traditional installation)
 
-### Method 1: NPX (Recommended)
+### Method 1: Skills CLI (Recommended)
 
-Install via add-skill (one command):
+Install via Skills CLI (one command):
 ```bash
-npx add-skill MaTriXy/Agent-Registry
+npx skills find MaTriXy/Agent-Registry
 ```
 
-Or install globally:
+Update existing skills:
 ```bash
-npm install -g @claude-code/agent-registry
+npx skills update
 ```
 
 **Then run migration:**

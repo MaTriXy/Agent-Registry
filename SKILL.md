@@ -66,11 +66,11 @@ python scripts/get_agent.py security-auditor
 **Quick Install (Recommended):**
 
 ```bash
-# NPX with add-skill (recommended)
-npx add-skill MaTriXy/Agent-Registry
+# Using Skills CLI (recommended)
+npx skills find MaTriXy/Agent-Registry
 
-# OR npm directly
-npm install -g @claude-code/agent-registry
+# Update existing skills
+npx skills update
 ```
 
 **Traditional Install:**
