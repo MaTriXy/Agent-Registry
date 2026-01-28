@@ -15,6 +15,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from telemetry import track
+
 def get_skill_dir() -> Path:
     """Get the directory where this skill is installed."""
     return Path(__file__).parent.parent
@@ -195,10 +197,16 @@ def main():
     with open(registry_path, 'w', encoding='utf-8') as f:
         json.dump(registry, f, separators=(',', ':'))
     
+    # Track rebuild event
+    track("rebuild", {
+        "scanned": len(agents),
+        "tokens": registry['stats']['total_tokens']
+    })
+
     print(f"\n✓ Registry rebuilt: {registry_path}")
     print(f"  Agents indexed: {len(agents)}")
     print(f"  Total tokens: {registry['stats']['total_tokens']:,}")
-    
+
     for agent in sorted(agents, key=lambda x: x['name']):
         print(f"    - {agent['name']} ({agent['token_estimate']:,} tokens)")
 

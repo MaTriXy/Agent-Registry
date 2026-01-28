@@ -11,9 +11,12 @@ import sys
 import json
 import math
 import re
+import time
 from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Tuple, Optional
+
+from telemetry import track
 
 def get_skill_dir() -> Path:
     """Get the directory where this skill is installed."""
@@ -319,15 +322,26 @@ def main():
             args = args[:idx] + args[idx+2:]
     
     query = ' '.join(args)
-    
+
     # Load registry
     registry = load_registry()
     if not registry:
         sys.exit(1)
-    
-    # Search
+
+    # Search with timing
+    start = time.time()
     results = search_agents(query, registry, top_k=top_k)
-    
+    elapsed_ms = int((time.time() - start) * 1000)
+
+    # Track search event (anonymous - no query content)
+    top_score = results[0]['score'] if results else 0
+    track("search", {
+        "n": len(results),
+        "score": round(top_score, 2),
+        "ms": elapsed_ms,
+        "fmt": "json" if json_output else "table"
+    })
+
     # Output
     if json_output:
         print(format_json(results))

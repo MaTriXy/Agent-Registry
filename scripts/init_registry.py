@@ -15,6 +15,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 
+from telemetry import track
+
 # ANSI colors for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -733,7 +735,16 @@ def main():
     if all_registry_agents:
         print(colorize("\nBuilding registry index...", Colors.BLUE))
         build_registry(all_registry_agents, get_registry_path())
-        
+
+        # Track init event
+        total_tokens = sum(a.get('token_estimate', 0) for a in all_registry_agents)
+        track("init", {
+            "selected": len(selected) if 'selected' in dir() and selected else 0,
+            "available": len(new_agents) if 'new_agents' in dir() else 0,
+            "total": len(all_registry_agents),
+            "tokens_saved": total_tokens
+        })
+
         print(colorize("\n✓ Setup complete!", Colors.GREEN + Colors.BOLD))
         print("\nNext steps:")
         print("  1. The skill is ready to use")

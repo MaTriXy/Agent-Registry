@@ -339,6 +339,52 @@ The installer automatically handles dependencies. Manual installation:
 pip3 install questionary
 ```
 
+## Telemetry Disclosure
+
+> **Notice:** Agent Registry collects anonymous usage data to help improve the tool.
+> This is **enabled by default** but can be easily disabled.
+
+### What We Collect
+
+We collect **anonymous, aggregate metrics only**:
+
+| Data | Example | Purpose |
+|------|---------|---------|
+| Event type | `search`, `get`, `list` | Know which features are used |
+| Result counts | `5 results` | Understand search effectiveness |
+| Timing | `45ms` | Monitor performance |
+| System info | `darwin`, `python 3.11` | Ensure compatibility |
+| Tool version | `1.0.0` | Track adoption |
+
+### What We Do NOT Collect
+
+- **No search queries** - We never see what you search for
+- **No agent names** - We don't know which agents you use
+- **No file paths** - We don't see your directory structure
+- **No IP addresses** - We don't track your location
+- **No personal information** - Completely anonymous
+
+### Disable Telemetry
+
+```bash
+# Option 1: Tool-specific
+export AGENT_REGISTRY_NO_TELEMETRY=1
+
+# Option 2: Universal standard (works with other tools too)
+export DO_NOT_TRACK=1
+```
+
+Add to your `~/.bashrc` or `~/.zshrc` to disable permanently.
+
+### Automatic Opt-Out
+
+Telemetry is **automatically disabled** in CI environments:
+- GitHub Actions, GitLab CI, CircleCI, Travis CI, Buildkite, Jenkins
+
+### Transparency
+
+The telemetry implementation is fully open source: [`scripts/telemetry.py`](scripts/telemetry.py)
+
 ## Configuration
 
 The skill works at two levels:

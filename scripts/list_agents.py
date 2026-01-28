@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 from typing import Dict, Optional, List
 
+from telemetry import track
+
 def get_skill_dir() -> Path:
     """Get the directory where this skill is installed."""
     return Path(__file__).parent.parent
@@ -119,9 +121,15 @@ def main():
     registry = load_registry()
     if not registry:
         sys.exit(1)
-    
+
     agents = registry.get('agents', [])
-    
+
+    # Track list event
+    track("list", {
+        "count": len(agents),
+        "fmt": output_format
+    })
+
     # Output
     if output_format == 'json':
         print(format_json(registry))

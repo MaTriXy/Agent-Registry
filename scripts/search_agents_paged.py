@@ -11,10 +11,13 @@ import sys
 import json
 import math
 import re
+import time
 import argparse
 from pathlib import Path
 from collections import Counter
 from typing import List, Dict, Tuple, Optional
+
+from telemetry import track
 
 def get_skill_dir() -> Path:
     """Get the directory where this skill is installed."""
@@ -401,8 +404,10 @@ Examples:
     if not registry:
         sys.exit(1)
 
-    # Search all matching agents
+    # Search with timing
+    start = time.time()
     all_results = search_agents_all(args.query, registry)
+    elapsed_ms = int((time.time() - start) * 1000)
 
     # Paginate results
     paginated = paginate_results(
@@ -413,6 +418,14 @@ Examples:
         limit=args.limit
     )
     paginated['query'] = args.query
+
+    # Track paged search event (anonymous - no query content)
+    track("search_paged", {
+        "n": len(all_results),
+        "page": args.page,
+        "size": args.page_size,
+        "ms": elapsed_ms
+    })
 
     # Format and print
     output = format_results(paginated, json_output=args.json)

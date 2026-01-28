@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Dict, Optional
 
+from telemetry import track
+
 def get_skill_dir() -> Path:
     """Get the directory where this skill is installed."""
     return Path(__file__).parent.parent
@@ -177,7 +179,14 @@ def main():
     content = load_agent_content(agent)
     if not content:
         sys.exit(1)
-    
+
+    # Track get event (anonymous - no agent name)
+    track("get", {
+        "found": True,
+        "tokens": agent.get('token_estimate', 0),
+        "fmt": "json" if json_output else ("raw" if raw_output else "formatted")
+    })
+
     # Output
     if json_output:
         print(format_json_output(agent, content))
