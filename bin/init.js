@@ -199,7 +199,8 @@ async function interactiveSelection(agents) {
   if (agents.length === 0) return [];
 
   try {
-    require.resolve("@clack/prompts");
+    const clack = require("@clack/prompts");
+    if (typeof clack.groupMultiselect !== "function") throw new Error("groupMultiselect not available");
     return await interactiveSelectionClack(agents);
   } catch {
     console.log(colorize("\nNote: Install @clack/prompts for a better interactive UI", C.yellow));
