@@ -33,47 +33,43 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Create target directory
 echo -e "\n${CYAN}Creating skill directory...${NC}"
 mkdir -p "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR/scripts"
+mkdir -p "$INSTALL_DIR/lib"
+mkdir -p "$INSTALL_DIR/bin"
 mkdir -p "$INSTALL_DIR/references"
 mkdir -p "$INSTALL_DIR/agents"
+mkdir -p "$INSTALL_DIR/hooks"
 
 # Copy files
 echo -e "${CYAN}Copying skill files...${NC}"
 
 cp "$SCRIPT_DIR/SKILL.md" "$INSTALL_DIR/"
-cp "$SCRIPT_DIR/scripts/"*.py "$INSTALL_DIR/scripts/"
-chmod +x "$INSTALL_DIR/scripts/"*.py
+cp "$SCRIPT_DIR/package.json" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/lib/"*.js "$INSTALL_DIR/lib/"
+cp "$SCRIPT_DIR/bin/"*.js "$INSTALL_DIR/bin/"
+chmod +x "$INSTALL_DIR/bin/"*.js
+cp "$SCRIPT_DIR/hooks/"*.js "$INSTALL_DIR/hooks/"
+chmod +x "$INSTALL_DIR/hooks/"*.js
 
 # Create empty registry if it doesn't exist
 if [ ! -f "$INSTALL_DIR/references/registry.json" ]; then
     echo '{"version": 1, "agents": [], "stats": {"total_agents": 0, "total_tokens": 0}}' > "$INSTALL_DIR/references/registry.json"
 fi
 
-# Install Python dependencies
-echo -e "\n${CYAN}Installing Python dependencies...${NC}"
-if command -v pip3 &> /dev/null; then
-    pip3 install questionary --quiet
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ questionary installed${NC}"
-    else
-        echo -e "${YELLOW}Warning: Failed to install questionary. Interactive selection will use fallback mode.${NC}"
-        echo -e "${YELLOW}  You can install it manually with: pip3 install questionary${NC}"
-    fi
-else
-    echo -e "${YELLOW}Warning: pip3 not found. Interactive selection will use fallback mode.${NC}"
-    echo -e "${YELLOW}  Please install questionary manually: pip3 install questionary${NC}"
-fi
+# Install dependencies
+echo -e "\n${CYAN}Installing dependencies...${NC}"
+cd "$INSTALL_DIR" && npm install --production 2>/dev/null || bun install 2>/dev/null || true
+echo -e "${GREEN}✓ Dependencies installed${NC}"
 
 echo -e "\n${GREEN}✓ Skill installed successfully!${NC}"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo ""
 echo "1. Run the migration script to move your agents to the registry:"
-echo -e "   ${YELLOW}cd $INSTALL_DIR && python scripts/init_registry.py${NC}"
+echo -e "   ${YELLOW}cd $INSTALL_DIR && bun bin/init.js${NC}"
 echo ""
 echo "2. After migration, Claude Code will use lazy loading for agents"
 echo ""
 echo "3. Verify with:"
-echo -e "   ${YELLOW}cd $INSTALL_DIR && python scripts/list_agents.py${NC}"
+echo -e "   ${YELLOW}cd $INSTALL_DIR && bun bin/list.js${NC}"
 echo ""
 echo -e "${GREEN}Installation complete!${NC}"

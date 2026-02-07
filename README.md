@@ -12,8 +12,8 @@ With dozens or hundreds of agents installed, this creates token overhead that wa
 
 Claude Code's default behavior loads **all agents upfront** into every conversation:
 
-- **Token overhead:** ~117 tokens per agent × agent count = wasted context
-- **Scales poorly:** 50 agents ≈ 5.8k, 150 agents ≈ 17.5k, 300+ agents ≈ 35k+ tokens
+- **Token overhead:** ~117 tokens per agent x agent count = wasted context
+- **Scales poorly:** 50 agents = 5.8k, 150 agents = 17.5k, 300+ agents = 35k+ tokens
 - **Context waste:** Typically only 1-3 agents are relevant per conversation
 - **All or nothing:** You pay the full cost even if you use zero agents
 - **Slow startup:** Processing hundreds of agent files delays conversation start
@@ -26,24 +26,24 @@ Here's the actual difference from a real Claude Code session with 140 agents:
 <tr>
 <td width="50%">
 
-### ❌ Before: All Agents Loaded
+### Before: All Agents Loaded
 
 ![Before Agent Registry](docs/images/context-usage-before.png)
 
 **Context consumption:**
-- 🔴 Custom agents: **16.4k tokens (8.2%)**
+- Custom agents: **16.4k tokens (8.2%)**
 - Total: 76k/200k (38%)
 - **Problem:** 14k tokens wasted on unused agents
 
 </td>
 <td width="50%">
 
-### ✅ After: Agent Registry
+### After: Agent Registry
 
 ![After Agent Registry](docs/images/context-usage-after.png)
 
 **Context consumption:**
-- 🟢 Custom agents: **2.7k tokens (1.4%)**
+- Custom agents: **2.7k tokens (1.4%)**
 - Total: 42k/200k (21%)
 - **Savings:** 13.7k tokens freed = **83% reduction**
 
@@ -51,7 +51,7 @@ Here's the actual difference from a real Claude Code session with 140 agents:
 </tr>
 </table>
 
-**Bottom line:** Agent Registry **freed up 34k tokens** in total context (38% → 21%), giving you **56% more free workspace** (79k → 113k available) for your actual code and conversations.
+**Bottom line:** Agent Registry **freed up 34k tokens** in total context (38% -> 21%), giving you **56% more free workspace** (79k -> 113k available) for your actual code and conversations.
 
 > **Testing methodology:** Both screenshots were captured from the same repository in separate Claude Code sessions. Each session was started fresh using the `/clear` command to ensure zero existing context, providing accurate baseline measurements of agent-related token overhead.
 
@@ -60,36 +60,50 @@ Here's the actual difference from a real Claude Code session with 140 agents:
 **Agent Registry** shifts from **eager loading** to **lazy loading**:
 
 ```
-Before: Load ALL agents → Context Window → Use 1-2 agents
+Before: Load ALL agents -> Context Window -> Use 1-2 agents
         (~16-35k tokens)    (limited)      (~200-300 tokens)
 
-        ❌ Wastes 90%+ of agent tokens on unused agents
+        Wastes 90%+ of agent tokens on unused agents
 
-After:  Search registry → Load specific agent → Use what you need
+After:  Search registry -> Load specific agent -> Use what you need
         (~2-4k tokens)   (instant)          (~200-300 tokens)
 
-        ✅ Saves 70-90% of agent-related tokens
+        Saves 70-90% of agent-related tokens
 ```
+
+### Automatic Discovery (Hook)
+
+A `UserPromptSubmit` hook makes agent discovery **fully automatic**. Every user prompt is analyzed by an in-process BM25 search engine (JavaScript, runs on Bun -- Claude Code's runtime). If high-confidence matches are found (score >= 0.5), they're injected as context before Claude responds.
+
+```
+User: "review my authentication code for security issues"
+
+-> Hook finds: security-auditor (0.89), code-reviewer (0.71)
+-> Claude sees suggestions in additionalContext
+-> Loads the best match and follows its instructions
+```
+
+No manual search step. Runs in ~100ms. Fails silently on any error -- never blocks the user.
 
 **The math (140 agents example):**
 - **Before:** 16.4k tokens (all agents loaded)
 - **After:** 2.7k tokens (registry index loaded, agents on-demand)
-- **Savings:** 13.7k tokens saved → **83% reduction**
+- **Savings:** 13.7k tokens saved -> **83% reduction**
 
 **Scaling examples:**
-- 50 agents: Save ~3-4k tokens (5.8k → 2.5k) = 60-70% reduction
-- 150 agents: Save ~14k tokens (17.5k → 3k) = 80% reduction
-- 300 agents: Save ~30k tokens (35k → 3.5k) = 85-90% reduction
+- 50 agents: Save ~3-4k tokens (5.8k -> 2.5k) = 60-70% reduction
+- 150 agents: Save ~14k tokens (17.5k -> 3k) = 80% reduction
+- 300 agents: Save ~30k tokens (35k -> 3.5k) = 85-90% reduction
 
 ## What This Skill Provides
 
-### 🔍 Smart Search (BM25 + Keyword Matching)
+### Smart Search (BM25 + Keyword Matching)
 Find agents by intent, not by name:
 ```bash
-python scripts/search_agents.py "code review security"
+bun bin/search.js "code review security"
 # Returns: security-auditor (0.89), code-reviewer (0.71)
 
-python scripts/search_agents_paged.py "backend api" --page 1 --page-size 10
+bun bin/search-paged.js "backend api" --page 1 --page-size 10
 # Paginated results for large agent collections
 ```
 
@@ -100,24 +114,24 @@ python scripts/search_agents_paged.py "backend api" --page 1 --page-size 10
 - Pagination for 100+ agent results
 - JSON output mode for scripting
 
-### ✨ Interactive Migration UI
-Beautiful checkbox interface with advanced selection:
+### Interactive Migration UI
+Beautiful selection interface with advanced features:
 - **Multi-level Select All:** Global, per-category, per-page selection
 - **Pagination:** Automatic 10-item pages for large collections (100+ agents)
-- **Visual indicators:** 🟢 <1k tokens, 🟡 1-3k, 🔴 >3k
+- **Visual indicators:** Color-coded token estimates (<1k, 1-3k, >3k)
 - **Category grouping:** Auto-organized by subdirectory structure
-- **Keyboard navigation:** ↑↓ navigate, Space toggle, Enter confirm
+- **Keyboard navigation:** Arrow keys navigate, Space toggle, Enter confirm
 - **Selection persistence:** Selections preserved across page navigation
-- **Graceful fallback:** Text input mode if questionary unavailable
+- **Graceful fallback:** Text input mode if @clack/prompts unavailable
 
 **Supported:**
-- Checkbox UI with questionary
-- Page-based navigation (◀ Previous / ▶ Next)
+- Interactive checkbox UI with @clack/prompts
+- Page-based navigation
 - Finish selection workflow
 - Text-based fallback mode
 
-### 📊 Lightweight Index
-Registry stores only metadata — not full agent content:
+### Lightweight Index
+Registry stores only metadata -- not full agent content:
 - Agent name and summary
 - Keywords for search matching
 - Token estimates for capacity planning
@@ -125,19 +139,18 @@ Registry stores only metadata — not full agent content:
 - Content hashes for change detection
 
 **Index size scales slowly:**
-- 50 agents ≈ 2k tokens
-- 150 agents ≈ 3-4k tokens
-- 300 agents ≈ 6-8k tokens
+- 50 agents = ~2k tokens
+- 150 agents = ~3-4k tokens
+- 300 agents = ~6-8k tokens
 
 **Much smaller than loading all agents:**
-- Traditional: ~117 tokens/agent × count
+- Traditional: ~117 tokens/agent x count
 - Registry: ~20-25 tokens/agent in index
 
 ## Installation
 
 ### Prerequisites
-- Python 3.7+ (required)
-- Node.js 14+ (for NPX installation method)
+- Bun (ships with Claude Code -- no separate installation needed)
 - Git (for traditional installation)
 
 ### Method 1: Skills CLI (Recommended)
@@ -160,33 +173,38 @@ npx skills update
 **Then run migration:**
 ```bash
 cd ~/.claude/skills/agent-registry
-python3 scripts/init_registry.py
+bun bin/init.js
 ```
 
-### Method 2: Traditional Install
+### Method 2: npm Install
+
+```bash
+npm install @claude-code/agent-registry
+```
+
+### Method 3: Traditional Install
 
 Clone and install:
 ```bash
 # Clone to Claude skills directory
 git clone https://github.com/MaTriXy/Agent-Registry.git ~/.claude/skills/agent-registry
 
-# Run installer (auto-installs Python dependencies)
+# Run installer (auto-installs dependencies)
 cd ~/.claude/skills/agent-registry
 ./install.sh
 ```
 
 **What the installer does:**
-1. ✓ Verifies installation directory
-2. ✓ Creates registry structure (`references/`, `agents/`)
-3. ✓ Installs `questionary` Python package (for interactive UI)
-4. ✓ Falls back gracefully if pip3 unavailable
-5. ✓ Runs migration wizard automatically
+1. Verifies installation directory
+2. Creates registry structure (`references/`, `agents/`, `lib/`, `bin/`)
+3. Installs npm dependencies (`@clack/prompts` for interactive UI)
+4. Runs migration wizard automatically
 
 ### Post-Installation
 
 **All methods require migration:**
 ```bash
-python3 scripts/init_registry.py
+bun bin/init.js
 ```
 
 This interactive wizard:
@@ -195,30 +213,28 @@ This interactive wizard:
 3. Lets you select which agents to migrate (with pagination for 100+ agents)
 4. Builds the searchable registry index
 
-**Note:** Both installation methods support the full Python-based CLI tooling.
-
 ### Migrate Your Agents
 
 ```bash
 # Run interactive migration
-python scripts/init_registry.py
+bun bin/init.js
 ```
 
 **Interactive selection modes:**
 
-**With questionary** (recommended):
+**With @clack/prompts** (default):
 ```
-? Select agents to migrate (↑↓=navigate, Space=toggle, Enter=confirm)
-  ────────── FRONTEND ──────────
-❯ ◉ react-expert - React specialist for modern component... 🟡 1850
-  ○ angular-expert - Angular framework expert with... 🔴 3200
-  ○ vue-expert - Vue.js specialist for reactive UIs... 🟢 750
-  ────────── BACKEND ──────────
-  ○ django-expert - Django web framework specialist... 🟡 2100
-  ○ fastapi-expert - FastAPI for high-performance APIs... 🟢 980
+? Select agents to migrate (arrow keys navigate, Space toggle, Enter confirm)
+  ---------- FRONTEND ----------
+> [x] react-expert - React specialist for modern component... [1850 tokens]
+  [ ] angular-expert - Angular framework expert with... [3200 tokens]
+  [ ] vue-expert - Vue.js specialist for reactive UIs... [750 tokens]
+  ---------- BACKEND ----------
+  [ ] django-expert - Django web framework specialist... [2100 tokens]
+  [ ] fastapi-expert - FastAPI for high-performance APIs... [980 tokens]
 ```
 
-**Without questionary** (fallback):
+**Without @clack/prompts** (fallback):
 ```
 Select agents to migrate:
   Enter numbers separated by commas (e.g., 1,3,5)
@@ -235,7 +251,7 @@ Instead of Claude loading all agents, use this pattern:
 # 1. User asks: "Can you review my authentication code for security issues?"
 
 # 2. Search for relevant agents
-python scripts/search_agents.py "code review security authentication"
+bun bin/search.js "code review security authentication"
 
 # Output:
 # Found 2 matching agents:
@@ -243,7 +259,7 @@ python scripts/search_agents.py "code review security authentication"
 #   2. code-reviewer (score: 0.71) - General code review and best practices
 
 # 3. Load the best match
-python scripts/get_agent.py security-auditor
+bun bin/get.js security-auditor
 
 # 4. Follow loaded agent's instructions
 ```
@@ -252,41 +268,43 @@ python scripts/get_agent.py security-auditor
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `search_agents.py` | Find agents matching intent | `python scripts/search_agents.py "react hooks"` |
-| `get_agent.py` | Load specific agent | `python scripts/get_agent.py react-expert` |
-| `list_agents.py` | Show all indexed agents | `python scripts/list_agents.py` |
-| `rebuild_registry.py` | Rebuild index after changes | `python scripts/rebuild_registry.py` |
+| `search.js` | Find agents matching intent | `bun bin/search.js "react hooks"` |
+| `search-paged.js` | Paged search for large registries | `bun bin/search-paged.js "query" --page 1` |
+| `get.js` | Load specific agent | `bun bin/get.js react-expert` |
+| `list.js` | Show all indexed agents | `bun bin/list.js` |
+| `rebuild.js` | Rebuild index after changes | `bun bin/rebuild.js` |
+
+> **Note:** The `UserPromptSubmit` hook (`hooks/user_prompt_search.js`) runs automatically on every prompt -- no manual search step is needed for typical usage. The commands above are available for direct use when needed.
 
 ## Architecture
 
 ### How It Works
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Traditional Approach (Eager Loading)                   │
-│                                                          │
-│  Load ALL agents → Context Window → Use 1-2 agents      │
-│  (~16-35k tokens)   (limited)        (~200-400 tokens)  │
-│                                                          │
-│  ❌ Wastes 85-90% of loaded agent tokens                │
-└─────────────────────────────────────────────────────────┘
+Traditional Approach (Eager Loading)
 
-┌─────────────────────────────────────────────────────────┐
-│  Agent Registry Approach (Lazy Loading)                 │
-│                                                          │
-│  registry.json → Search → Load specific agent           │
-│  (~2-4k tokens) (fast)   (~200-400 tokens)              │
-│                                                          │
-│  ✅ Saves 70-90% of agent-related tokens                │
-└─────────────────────────────────────────────────────────┘
+  Load ALL agents -> Context Window -> Use 1-2 agents
+  (~16-35k tokens)   (limited)        (~200-400 tokens)
+
+  Wastes 85-90% of loaded agent tokens
+
+Agent Registry Approach (Lazy Loading)
+
+  registry.json -> Search -> Load specific agent
+  (~2-4k tokens) (fast)   (~200-400 tokens)
+
+  Saves 70-90% of agent-related tokens
 ```
 
 ### Registry Structure
 
 ```
 ~/.claude/skills/agent-registry/
-├── SKILL.md                 # Skill definition for Claude
+├── SKILL.md                 # Skill definition + hook registration
 ├── install.sh               # Installer script
+├── package.json             # Dependencies (@clack/prompts)
+├── hooks/
+│   └── user_prompt_search.js  # UserPromptSubmit hook (Bun)
 ├── references/
 │   └── registry.json        # Lightweight agent index
 ├── agents/                  # Migrated agents stored here
@@ -296,12 +314,19 @@ python scripts/get_agent.py security-auditor
 │   └── backend/
 │       ├── django-expert.md
 │       └── fastapi-expert.md
-└── scripts/
-    ├── init_registry.py     # Interactive migration
-    ├── search_agents.py     # Search by intent
-    ├── get_agent.py         # Load specific agent
-    ├── list_agents.py       # List all agents
-    └── rebuild_registry.py  # Rebuild index
+├── lib/
+│   ├── registry.js          # Path utilities + registry I/O
+│   ├── parse.js             # Agent file parsing
+│   ├── search.js            # BM25 search engine
+│   └── telemetry.js         # Anonymous telemetry
+└── bin/
+    ├── cli.js               # CLI dispatcher
+    ├── init.js              # Interactive migration
+    ├── search.js            # Search by intent
+    ├── search-paged.js      # Paginated search
+    ├── get.js               # Load specific agent
+    ├── list.js              # List all agents
+    └── rebuild.js           # Rebuild index
 ```
 
 ### Registry Format
@@ -331,13 +356,10 @@ python scripts/get_agent.py security-auditor
 
 ## Dependencies
 
-- **Python 3.7+**
-- **questionary** - Interactive checkbox selection UI
+- **Bun** -- Ships with Claude Code, no separate installation needed
+- **@clack/prompts** -- Interactive selection UI (auto-installed)
 
-The installer automatically handles dependencies. Manual installation:
-```bash
-pip3 install questionary
-```
+The installer automatically handles dependencies via `npm install` or `bun install`.
 
 ## Telemetry Disclosure
 
@@ -353,8 +375,8 @@ We collect **anonymous, aggregate metrics only**:
 | Event type | `search`, `get`, `list` | Know which features are used |
 | Result counts | `5 results` | Understand search effectiveness |
 | Timing | `45ms` | Monitor performance |
-| System info | `darwin`, `python 3.11` | Ensure compatibility |
-| Tool version | `1.0.0` | Track adoption |
+| System info | `darwin`, `bun 1.x` | Ensure compatibility |
+| Tool version | `2.0.0` | Track adoption |
 
 ### What We Do NOT Collect
 
@@ -383,7 +405,7 @@ Telemetry is **automatically disabled** in CI environments:
 
 ### Transparency
 
-The telemetry implementation is fully open source: [`scripts/telemetry.py`](scripts/telemetry.py)
+The telemetry implementation is fully open source: [`lib/telemetry.js`](lib/telemetry.js)
 
 ## Configuration
 
@@ -397,14 +419,14 @@ Agents not migrated remain in `~/.claude/agents/` and load normally.
 ## Benefits
 
 ### Token Efficiency
-- **Before:** ~117 tokens/agent × count loaded upfront
+- **Before:** ~117 tokens/agent x count loaded upfront
 - **After:** ~20-25 tokens/agent in index + full agent only when used
 - **Savings:** 70-90% reduction in agent-related token overhead
 
 **Real-world examples:**
-- 50 agents: Save ~3-4k tokens (5.8k → 2.5k) = 60-70% reduction
-- 140 agents: Save ~13.7k tokens (16.4k → 2.7k) = 83% reduction
-- 300 agents: Save ~30k tokens (35k → 5k) = 85-90% reduction
+- 50 agents: Save ~3-4k tokens (5.8k -> 2.5k) = 60-70% reduction
+- 140 agents: Save ~13.7k tokens (16.4k -> 2.7k) = 83% reduction
+- 300 agents: Save ~30k tokens (35k -> 5k) = 85-90% reduction
 
 ### Performance
 - **Faster startup:** Less context to process at conversation start
@@ -414,13 +436,13 @@ Agents not migrated remain in `~/.claude/agents/` and load normally.
 
 ### Organization
 - **Category grouping:** Agents auto-organized by subdirectory
-- **Visual indicators:** Color-coded token estimates (🟢🟡🔴)
+- **Visual indicators:** Color-coded token estimates
 - **Easy discovery:** Search by intent, not memorized names
 - **Pagination:** Browse large collections without terminal overflow
 
 ### Flexibility
 - **Opt-in migration:** Choose exactly which agents to index
-- **Graceful degradation:** Text fallback if questionary unavailable
+- **Graceful degradation:** Text fallback if @clack/prompts unavailable
 - **Backward compatible:** Non-migrated agents load normally
 - **No lock-in:** Agents can stay in original `~/.claude/agents/` if preferred
 
@@ -429,7 +451,7 @@ Agents not migrated remain in `~/.claude/agents/` and load normally.
 ### For Users
 
 1. **Install once:** Run `./install.sh`
-2. **Migrate agents:** Run `python scripts/init_registry.py`
+2. **Migrate agents:** Run `bun bin/init.js`
 3. **Use normally:** Claude automatically searches registry on-demand
 
 ### For Claude
@@ -440,24 +462,7 @@ The skill provides a CRITICAL RULE:
 
 Claude follows this pattern:
 ```
-User Request → search_agents(intent) → select best match → get_agent(name) → execute
-```
-
-## Testing
-
-Validate the interactive UI:
-
-```bash
-cd scripts
-python test_questionary.py
-```
-
-Expected output:
-```
-✓ questionary successfully imported
-✓ 9 categories from subdirectories
-✓ 30 choices with separators
-✓ Fallback mode works when questionary missing
+User Request -> search_agents(intent) -> select best match -> get_agent(name) -> execute
 ```
 
 ## Contributing

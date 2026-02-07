@@ -13,49 +13,57 @@ The project ships as a **Claude Code Skill** (defined in `SKILL.md`) and is inst
 ### Core Data Flow
 
 ```
-registry.json (index) → search_agents.py (BM25 ranking) → get_agent.py (lazy load) → agent .md file
+registry.json (index) → search.js (BM25 ranking) → get.js (lazy load) → agent .md file
 ```
+
+### Automatic Discovery (Hook)
+
+```
+User prompt → UserPromptSubmit hook → user_prompt_search.js (in-process BM25) → additionalContext → Claude loads agents
+```
+
+The `hooks/user_prompt_search.js` hook runs on Bun (Claude Code's runtime) automatically on every user prompt. It reads `registry.json` directly and runs the BM25 search in-process. If high-confidence matches are found (score >= 0.5), they're injected as context. This makes agent discovery transparent.
 
 ### Key Components
 
 - **`references/registry.json`** — Lightweight index storing agent metadata (name, summary, keywords, token_estimate, content_hash). This is the only file loaded into context at conversation start.
 - **`agents/`** — Migrated agent markdown files, organized by subdirectory categories. Entirely git-ignored (user-specific data).
-- **`scripts/`** — Python CLI tools that operate on the registry:
-  - `init_registry.py` — Interactive migration wizard with questionary checkbox UI (paginated, category-grouped). Scans `~/.claude/agents/` and `.claude/agents/`, builds the index.
-  - `search_agents.py` — BM25 + keyword matching search. Custom BM25 implementation (no external dependencies beyond stdlib).
-  - `search_agents_paged.py` — Paginated variant for large registries (300+ agents).
-  - `get_agent.py` — Loads full agent content by name (exact match, then partial match).
-  - `list_agents.py` — Lists all indexed agents with metadata table.
-  - `rebuild_registry.py` — Rebuilds `registry.json` from agents in the `agents/` directory.
-  - `telemetry.py` — Fire-and-forget anonymous telemetry (imported by all scripts). Opt-out via `AGENT_REGISTRY_NO_TELEMETRY=1` or `DO_NOT_TRACK=1`.
-- **`SKILL.md`** — Skill definition with YAML frontmatter consumed by Claude Code's skill system.
-- **`install.sh`** — Bash installer that copies files to `~/.claude/skills/agent-registry/`, creates directory structure, and installs the `questionary` Python dependency.
+- **`lib/`** — Shared JavaScript modules (run on Bun):
+  - `registry.js` — Path utilities and registry I/O (read/write registry.json, resolve skill paths).
+  - `parse.js` — Agent file parsing (extract frontmatter, summary, keywords, token estimates).
+  - `search.js` — BM25 + keyword matching search engine. Custom BM25 implementation (no external dependencies).
+  - `telemetry.js` — Fire-and-forget anonymous telemetry using fetch. Opt-out via `AGENT_REGISTRY_NO_TELEMETRY=1` or `DO_NOT_TRACK=1`.
+- **`bin/`** — CLI entry points (run via `bun bin/X.js`):
+  - `init.js` — Interactive migration wizard with @clack/prompts UI (paginated, category-grouped). Scans `~/.claude/agents/` and `.claude/agents/`, builds the index.
+  - `search.js` — Search agents by intent using BM25.
+  - `search-paged.js` — Paginated variant for large registries (300+ agents).
+  - `get.js` — Load full agent content by name (exact match, then partial match).
+  - `list.js` — List all indexed agents with metadata table.
+  - `rebuild.js` — Rebuild `registry.json` from agents in the `agents/` directory.
+  - `cli.js` — Thin CLI dispatcher (routes subcommands to the above scripts).
+- **`hooks/`** — Hook scripts that integrate with Claude Code's event system:
+  - `user_prompt_search.js` — `UserPromptSubmit` hook (Bun). Automatically searches the registry on each user prompt using an in-process BM25 engine. Injects matching agents (score >= 0.5) as `additionalContext`. Fails silently on errors.
+- **`SKILL.md`** — Skill definition with YAML frontmatter consumed by Claude Code's skill system. Includes hook registration in the `hooks` frontmatter key.
+- **`install.sh`** — Bash installer that copies files to `~/.claude/skills/agent-registry/`, creates directory structure, and runs `npm install` for dependencies.
 
 ### Search Algorithm
 
-`search_agents.py` implements BM25 (Best Matching 25) from scratch using only Python stdlib (`math`, `re`, `collections.Counter`). No external search libraries are required. Keywords from the registry index are matched against query terms with relevance scoring (0.0-1.0).
+`lib/search.js` implements BM25 (Best Matching 25) from scratch with no external search libraries. Keywords from the registry index are matched against query terms with relevance scoring (0.0-1.0).
 
 ### Telemetry
 
-All scripts import `telemetry.track()` which sends anonymous metrics (event type, result count, timing, OS, Python version) to a remote endpoint via background daemon threads. Never sends search queries, agent names, or file paths.
+All CLI scripts import `telemetry.track()` from `lib/telemetry.js` which sends anonymous metrics (event type, result count, timing, OS, runtime version) to a remote endpoint via fire-and-forget fetch calls. Never sends search queries, agent names, or file paths.
 
 ## Commands
 
-### Run scripts (from repo root)
+### Run CLI tools (from repo root)
 
 ```bash
-python3 scripts/search_agents.py "query terms"
-python3 scripts/get_agent.py <agent-name>
-python3 scripts/list_agents.py
-python3 scripts/rebuild_registry.py
-python3 scripts/init_registry.py           # Interactive migration
-```
-
-### Run tests
-
-```bash
-cd scripts && python3 test_questionary.py   # Tests questionary UI integration
-cd scripts && python3 test_selection.py      # Tests agent scan and category detection
+bun bin/search.js "query terms"
+bun bin/get.js <agent-name>
+bun bin/list.js
+bun bin/rebuild.js
+bun bin/init.js                    # Interactive migration
 ```
 
 ### Install
@@ -68,13 +76,13 @@ cd scripts && python3 test_selection.py      # Tests agent scan and category det
 ### Disable telemetry during development
 
 ```bash
-AGENT_REGISTRY_NO_TELEMETRY=1 python3 scripts/search_agents.py "query"
+AGENT_REGISTRY_NO_TELEMETRY=1 bun bin/search.js "query"
 ```
 
 ## Development Notes
 
-- **Python 3.7+ required.** No Node.js runtime needed for the core scripts (package.json is for NPX-based skill installation only).
-- **Only external dependency:** `questionary` (for interactive checkbox UI). All search/indexing uses stdlib only. Migration falls back to text input if questionary is missing.
-- Scripts use relative imports from `telemetry.py`, so they must be run from `scripts/` or with `scripts/` in the Python path.
+- **Bun runtime required.** Bun ships with Claude Code — no additional runtime installation needed.
+- **External dependency:** `@clack/prompts` (for interactive checkbox UI in `bin/init.js`). All search/indexing uses only built-in APIs.
+- `lib/` modules use CommonJS (require/module.exports). CLI scripts in `bin/` import from `../lib/`.
 - `registry.json` and `agents/*` are git-ignored (user-specific data populated during migration).
 - The `remotion-video/` directory is git-ignored and unrelated to the core skill (used for promotional video).
