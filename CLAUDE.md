@@ -66,6 +66,12 @@ bun bin/rebuild.js
 bun bin/init.js                    # Interactive migration
 ```
 
+### Run tests
+
+```bash
+bun test                  # 101 tests across 5 files (unit + CLI integration)
+```
+
 ### Install
 
 ```bash

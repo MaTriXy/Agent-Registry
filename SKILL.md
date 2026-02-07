@@ -1,5 +1,6 @@
 ---
 name: agent-registry
+version: 2.0.0
 description: |
   MANDATORY agent discovery system for token-efficient agent loading. Claude MUST use this skill
   instead of loading agents directly from ~/.claude/agents/ or .claude/agents/. Provides lazy

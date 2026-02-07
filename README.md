@@ -465,15 +465,29 @@ Claude follows this pattern:
 User Request -> search_agents(intent) -> select best match -> get_agent(name) -> execute
 ```
 
+## Development
+
+### Running Tests
+
+```bash
+bun test
+```
+
+101 tests across 5 files covering:
+- **Unit tests:** lib/registry, lib/search, lib/parse, lib/telemetry
+- **CLI integration tests:** all bin/ scripts tested via subprocess
+- **Hook tests:** user_prompt_search.js stdin/stdout behavior
+
 ## Contributing
 
 Found an issue or want to improve the registry? PRs welcome!
 
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feature/improvement`)
-3. Commit your changes (`git commit -m 'Add improvement'`)
-4. Push to the branch (`git push origin feature/improvement`)
-5. Open a Pull Request
+3. Run tests (`bun test`)
+4. Commit your changes (`git commit -m 'Add improvement'`)
+5. Push to the branch (`git push origin feature/improvement`)
+6. Open a Pull Request
 
 ## License
 
