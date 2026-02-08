@@ -1,5 +1,7 @@
 # Agent Registry
 
+[![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/MaTriXy/Agent-Registry/releases/tag/v2.0.0) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 > **Lazy-loading system for Claude Code agents that reduces context window usage by 70-90%**
 
 As your agent collection grows, Claude Code loads **every single agent** into every conversation.
