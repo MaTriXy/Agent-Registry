@@ -2,7 +2,14 @@ const { describe, test, expect, beforeAll, afterAll, beforeEach } = require("bun
 const fs = require("fs");
 const path = require("path");
 
-const { getSkillDir, getRegistryPath, getAgentsDir, loadRegistry, saveRegistry } = require("../lib/registry");
+const {
+  getSkillDir,
+  getRegistryPath,
+  getAgentsDir,
+  resolveRegistryAgentPath,
+  loadRegistry,
+  saveRegistry,
+} = require("../lib/registry");
 
 describe("registry", () => {
   describe("getSkillDir", () => {
@@ -24,6 +31,32 @@ describe("registry", () => {
     test("returns path to agents/", () => {
       const agentsDir = getAgentsDir();
       expect(agentsDir).toEndWith("agents");
+    });
+  });
+
+  describe("resolveRegistryAgentPath", () => {
+    test("resolves bare file names under agents/", () => {
+      const result = resolveRegistryAgentPath("test-agent.md");
+      expect(result.ok).toBe(true);
+      expect(result.path).toEndWith(path.join("agents", "test-agent.md"));
+    });
+
+    test("resolves paths prefixed with agents/", () => {
+      const result = resolveRegistryAgentPath(path.join("agents", "category", "a.md"));
+      expect(result.ok).toBe(true);
+      expect(result.path).toEndWith(path.join("agents", "category", "a.md"));
+    });
+
+    test("rejects path traversal entries", () => {
+      const result = resolveRegistryAgentPath("../../etc/passwd");
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain("Refusing to load agent outside");
+    });
+
+    test("rejects absolute paths outside agents/", () => {
+      const result = resolveRegistryAgentPath("/tmp/outside.md");
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain("Refusing to load agent outside");
     });
   });
 

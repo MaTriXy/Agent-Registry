@@ -30,12 +30,12 @@ if (!command || command === "--help" || command === "-h" || !commands[command]) 
   console.log("  get           Load a specific agent's full instructions");
   console.log("  list          List all indexed agents");
   console.log("  rebuild       Rebuild the registry index");
-  console.log("  init          Interactive agent migration wizard");
+  console.log("  init          Interactive agent migration wizard (copy by default)");
   console.log("\nExamples:");
   console.log('  agent-registry search "code review security"');
   console.log("  agent-registry get code-reviewer");
   console.log("  agent-registry list --detailed");
-  console.log("  agent-registry init");
+  console.log("  agent-registry init --move");
 
   if (command && command !== "--help" && command !== "-h" && !commands[command]) {
     console.error(`\nUnknown command: ${command}`);

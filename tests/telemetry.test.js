@@ -2,11 +2,14 @@ const { describe, test, expect, beforeEach, afterEach, mock } = require("bun:tes
 
 describe("telemetry", () => {
   let originalEnv;
+  let originalFetch;
 
   beforeEach(() => {
     originalEnv = { ...process.env };
+    originalFetch = global.fetch;
     // Clear telemetry-related env vars
     delete process.env.AGENT_REGISTRY_NO_TELEMETRY;
+    delete process.env.AGENT_REGISTRY_TELEMETRY;
     delete process.env.DO_NOT_TRACK;
     delete process.env.CI;
     delete process.env.GITHUB_ACTIONS;
@@ -22,6 +25,7 @@ describe("telemetry", () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    global.fetch = originalFetch;
     delete require.cache[require.resolve("../lib/telemetry")];
   });
 
@@ -29,7 +33,7 @@ describe("telemetry", () => {
     test("exports track, VERSION, and TOOL_ID", () => {
       const telemetry = require("../lib/telemetry");
       expect(typeof telemetry.track).toBe("function");
-      expect(telemetry.VERSION).toBe("2.0.0");
+      expect(telemetry.VERSION).toBe("2.0.1");
       expect(telemetry.TOOL_ID).toBe("agent-registry");
     });
   });
@@ -48,6 +52,32 @@ describe("telemetry", () => {
     test("does not throw when called with null data", () => {
       const { track } = require("../lib/telemetry");
       expect(() => track("test_event", null)).not.toThrow();
+    });
+
+    test("is disabled by default (no opt-in)", () => {
+      const calls = [];
+      global.fetch = mock((url) => {
+        calls.push(url);
+        return Promise.resolve();
+      });
+
+      const { track } = require("../lib/telemetry");
+      track("test_event");
+      expect(calls.length).toBe(0);
+    });
+
+    test("sends telemetry when explicitly opted in", async () => {
+      process.env.AGENT_REGISTRY_TELEMETRY = "1";
+      const calls = [];
+      global.fetch = mock((url) => {
+        calls.push(url);
+        return Promise.resolve();
+      });
+
+      const { track } = require("../lib/telemetry");
+      track("test_event", { n: 1 });
+      await Promise.resolve();
+      expect(calls.length).toBe(1);
     });
   });
 

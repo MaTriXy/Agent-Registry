@@ -26,6 +26,35 @@ function colorize(text, color) {
   return process.stdout.isTTY ? `${color}${text}${C.reset}` : text;
 }
 
+function parseOptions(argv) {
+  const options = {
+    mode: "copy",
+    help: false,
+  };
+
+  for (const arg of argv) {
+    if (arg === "--move") options.mode = "move";
+    else if (arg === "--copy") options.mode = "copy";
+    else if (arg === "--help" || arg === "-h") options.help = true;
+    else {
+      process.stderr.write(`Unknown option: ${arg}\n`);
+      options.help = true;
+      options.invalid = true;
+    }
+  }
+
+  return options;
+}
+
+function printHelp() {
+  console.log("Usage: bun bin/init.js [OPTIONS]\n");
+  console.log("Interactive agent migration wizard.\n");
+  console.log("Options:");
+  console.log("  --copy        Copy selected agents into registry (default)");
+  console.log("  --move        Move selected agents into registry (destructive)");
+  console.log("  --help, -h    Show this help");
+}
+
 function walkDir(dir) {
   const results = [];
   if (!fs.existsSync(dir)) return results;
@@ -135,7 +164,7 @@ async function interactiveSelectionClack(agents) {
   }
 
   const selected = await clack.groupMultiselect({
-    message: "Select agents to migrate",
+    message: "Select agents to add to registry",
     options: groups,
     required: false,
   });
@@ -155,9 +184,9 @@ async function interactiveSelectionFallback(agents) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
-  console.log(colorize("\nSelect agents to migrate to the registry:", C.bold));
+  console.log(colorize("\nSelect agents to add to the registry:", C.bold));
   console.log(colorize("  Enter numbers separated by commas (e.g., 1,3,5)", C.dim));
-  console.log(colorize("  Enter 'all' to migrate all agents", C.dim));
+  console.log(colorize("  Enter 'all' to add all agents", C.dim));
   console.log(colorize("  Enter 'none' or press Enter to skip migration", C.dim));
   console.log();
 
@@ -208,7 +237,7 @@ async function interactiveSelection(agents) {
   }
 }
 
-function migrateAgents(agents, targetDir) {
+function migrateAgents(agents, targetDir, mode) {
   const migrated = [];
   const errors = [];
   if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
@@ -225,22 +254,35 @@ function migrateAgents(agents, targetDir) {
         continue;
       }
 
-      fs.renameSync(source, target);
+      if (mode === "move") {
+        fs.renameSync(source, target);
+      } else {
+        fs.copyFileSync(source, target);
+      }
+
       agent.path = target;
       migrated.push(agent);
-      console.log(colorize(`  \u2713 Migrated: ${agent.name}`, C.green));
+      const action = mode === "move" ? "Moved" : "Copied";
+      console.log(colorize(`  \u2713 ${action}: ${agent.name}`, C.green));
     } catch (e) {
-      // renameSync fails across devices; fall back to copy+delete
-      try {
-        fs.copyFileSync(source, target);
-        fs.unlinkSync(source);
-        agent.path = target;
-        migrated.push(agent);
-        console.log(colorize(`  \u2713 Migrated: ${agent.name}`, C.green));
-      } catch (e2) {
-        errors.push(`${agent.name}: ${e2.message}`);
-        console.log(colorize(`  \u2717 Failed: ${agent.name} - ${e2.message}`, C.red));
+      if (mode === "move") {
+        // renameSync fails across devices; fall back to copy+delete
+        try {
+          fs.copyFileSync(source, target);
+          fs.unlinkSync(source);
+          agent.path = target;
+          migrated.push(agent);
+          console.log(colorize(`  \u2713 Moved: ${agent.name}`, C.green));
+          continue;
+        } catch (e2) {
+          errors.push(`${agent.name}: ${e2.message}`);
+          console.log(colorize(`  \u2717 Failed: ${agent.name} - ${e2.message}`, C.red));
+          continue;
+        }
       }
+
+      errors.push(`${agent.name}: ${e.message}`);
+      console.log(colorize(`  \u2717 Failed: ${agent.name} - ${e.message}`, C.red));
     }
   }
 
@@ -248,7 +290,7 @@ function migrateAgents(agents, targetDir) {
 }
 
 function buildRegistry(agents, registryPath) {
-  const skillDir = getSkillDir();
+  const agentsDir = getAgentsDir();
   const dir = path.dirname(registryPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
@@ -257,7 +299,7 @@ function buildRegistry(agents, registryPath) {
   const registry = {
     version: 1,
     generated_at: new Date().toISOString(),
-    skill_dir: skillDir,
+    skill_dir: getSkillDir(),
     agents: [],
     stats: {
       total_agents: agents.length,
@@ -269,9 +311,12 @@ function buildRegistry(agents, registryPath) {
   for (const agent of agents) {
     let relPath;
     try {
-      relPath = path.relative(skillDir, agent.path);
+      relPath = path.relative(agentsDir, agent.path);
+      if (relPath === "" || relPath === "." || relPath === ".." || relPath.startsWith(".." + path.sep)) {
+        relPath = agent.filename;
+      }
     } catch {
-      relPath = agent.path;
+      relPath = agent.filename;
     }
 
     registry.agents.push({
@@ -293,10 +338,17 @@ function buildRegistry(agents, registryPath) {
 }
 
 async function main() {
+  const options = parseOptions(process.argv.slice(2));
+  if (options.help) {
+    printHelp();
+    process.exit(options.invalid ? 1 : 0);
+  }
+
   console.log(colorize("\n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557", C.header));
   console.log(colorize("\u2551          Agent Registry Initialization                   \u2551", C.header));
   console.log(colorize("\u2551  Reduce token overhead by lazy-loading agents            \u2551", C.header));
   console.log(colorize("\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d", C.header));
+  console.log(colorize(`Mode: ${options.mode === "move" ? "move (destructive)" : "copy (non-destructive)"}`, C.cyan));
 
   // Find agent locations
   const locations = findAgentLocations();
@@ -347,14 +399,15 @@ async function main() {
   let selectedCount = 0;
 
   if (newAgents.length > 0) {
-    displayAgentList(newAgents, "Available Agents to Migrate");
+    displayAgentList(newAgents, "Available Agents to Add");
 
     const selected = await interactiveSelection(newAgents);
     selectedCount = selected.length;
 
     if (selected.length > 0) {
-      console.log(colorize(`\nMigrating ${selected.length} agent(s)...`, C.blue));
-      const { migrated, errors } = migrateAgents(selected, getAgentsDir());
+      const action = options.mode === "move" ? "Moving" : "Copying";
+      console.log(colorize(`\n${action} ${selected.length} agent(s)...`, C.blue));
+      const { migrated, errors } = migrateAgents(selected, getAgentsDir(), options.mode);
 
       if (errors.length > 0) {
         console.log(colorize(`\nEncountered ${errors.length} error(s):`, C.red));

@@ -1,6 +1,6 @@
 ---
 name: agent-registry
-version: 2.0.0
+version: 2.0.1
 description: |
   MANDATORY agent discovery system for token-efficient agent loading. Claude MUST use this skill
   instead of loading agents directly from ~/.claude/agents/ or .claude/agents/. Provides lazy
@@ -91,12 +91,15 @@ npx skills update
 
 # OR project-level installation
 ./install.sh --project
+
+# Optional: install enhanced interactive UI dependency
+./install.sh --install-deps
 ```
 
 **What install.sh does:**
 1. Copies skill files to `~/.claude/skills/agent-registry/`
 2. Creates empty registry structure
-3. Installs npm dependencies (`@clack/prompts` for interactive UI)
+3. Optionally installs dependencies via `--install-deps` (`@clack/prompts` for enhanced UI)
 
 ### Step 2: Migrate Your Agents
 
@@ -105,6 +108,8 @@ Run the interactive migration script:
 ```bash
 cd ~/.claude/skills/agent-registry
 bun bin/init.js
+# Optional destructive mode:
+bun bin/init.js --move
 ```
 
 **Interactive selection modes:**
@@ -122,13 +127,13 @@ bun bin/init.js
 1. Scans `~/.claude/agents/` and `.claude/agents/` for agent files
 2. Displays available agents with metadata
 3. Lets you interactively select which to migrate
-4. Moves selected agents to the registry
+4. Copies selected agents to the registry by default (`--move` is explicit opt-in)
 5. Builds search index (`registry.json`)
 
 ## Dependencies
 
 - **Bun** (ships with Claude Code) — zero additional dependencies for core functionality
-- **@clack/prompts**: Interactive selection UI (installed via npm/bun)
+- **@clack/prompts**: Optional enhanced interactive selection UI (install via `./install.sh --install-deps`)
 
 ## Registry Location
 

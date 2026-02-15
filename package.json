@@ -1,6 +1,6 @@
 {
   "name": "@claude-code/agent-registry",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Lazy-loading system for Claude Code agents - reduce token overhead by 70-90%",
   "keywords": [
     "claude-code",

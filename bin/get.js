@@ -2,8 +2,7 @@
 "use strict";
 
 const fs = require("fs");
-const path = require("path");
-const { loadRegistry, getSkillDir } = require("../lib/registry");
+const { loadRegistry, resolveRegistryAgentPath } = require("../lib/registry");
 const { track } = require("../lib/telemetry");
 
 function findAgent(registry, name) {
@@ -29,20 +28,19 @@ function findAgent(registry, name) {
 }
 
 function loadAgentContent(agent) {
-  const skillDir = getSkillDir();
-  let agentPath = path.join(skillDir, agent.path);
-
-  if (!fs.existsSync(agentPath)) {
-    agentPath = agent.path;
+  const resolved = resolveRegistryAgentPath(agent.path);
+  if (!resolved.ok) {
+    process.stderr.write(`Error: ${resolved.error}\n`);
+    return null;
   }
 
-  if (!fs.existsSync(agentPath)) {
+  if (!fs.existsSync(resolved.path)) {
     process.stderr.write(`Error: Agent file not found: ${agent.path}\n`);
     return null;
   }
 
   try {
-    return fs.readFileSync(agentPath, "utf8");
+    return fs.readFileSync(resolved.path, "utf8");
   } catch (e) {
     process.stderr.write(`Error reading agent file: ${e.message}\n`);
     return null;

@@ -1,6 +1,6 @@
 # Agent Registry
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/MaTriXy/Agent-Registry/releases/tag/v2.0.0) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue)](https://github.com/MaTriXy/Agent-Registry/releases/tag/v2.0.1) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 > **Lazy-loading system for Claude Code agents that reduces context window usage by 70-90%**
 
@@ -191,7 +191,7 @@ Clone and install:
 # Clone to Claude skills directory
 git clone https://github.com/MaTriXy/Agent-Registry.git ~/.claude/skills/agent-registry
 
-# Run installer (auto-installs dependencies)
+# Run installer
 cd ~/.claude/skills/agent-registry
 ./install.sh
 ```
@@ -199,8 +199,7 @@ cd ~/.claude/skills/agent-registry
 **What the installer does:**
 1. Verifies installation directory
 2. Creates registry structure (`references/`, `agents/`, `lib/`, `bin/`)
-3. Installs npm dependencies (`@clack/prompts` for interactive UI)
-4. Runs migration wizard automatically
+3. Optionally installs dependencies with `./install.sh --install-deps`
 
 ### Post-Installation
 
@@ -212,7 +211,7 @@ bun bin/init.js
 This interactive wizard:
 1. Scans your `~/.claude/agents/` directory
 2. Shows all available agents with token estimates
-3. Lets you select which agents to migrate (with pagination for 100+ agents)
+3. Lets you select which agents to copy (or move with `--move`)
 4. Builds the searchable registry index
 
 ### Migrate Your Agents
@@ -220,13 +219,16 @@ This interactive wizard:
 ```bash
 # Run interactive migration
 bun bin/init.js
+
+# Optional: destructive migration (moves source files)
+bun bin/init.js --move
 ```
 
 **Interactive selection modes:**
 
 **With @clack/prompts** (default):
 ```
-? Select agents to migrate (arrow keys navigate, Space toggle, Enter confirm)
+? Select agents to add to registry (arrow keys navigate, Space toggle, Enter confirm)
   ---------- FRONTEND ----------
 > [x] react-expert - React specialist for modern component... [1850 tokens]
   [ ] angular-expert - Angular framework expert with... [3200 tokens]
@@ -238,9 +240,9 @@ bun bin/init.js
 
 **Without @clack/prompts** (fallback):
 ```
-Select agents to migrate:
+Select agents to add to the registry:
   Enter numbers separated by commas (e.g., 1,3,5)
-  Enter 'all' to migrate all agents
+  Enter 'all' to add all agents
 ```
 
 ## Usage
@@ -339,7 +341,7 @@ Agent Registry Approach (Lazy Loading)
   "agents": [
     {
       "name": "react-expert",
-      "path": "agents/frontend/react-expert.md",
+      "path": "frontend/react-expert.md",
       "summary": "React specialist focused on modern component architecture...",
       "keywords": ["react", "javascript", "frontend", "hooks"],
       "token_estimate": 1850,
@@ -359,14 +361,14 @@ Agent Registry Approach (Lazy Loading)
 ## Dependencies
 
 - **Bun** -- Ships with Claude Code, no separate installation needed
-- **@clack/prompts** -- Interactive selection UI (auto-installed)
+- **@clack/prompts** -- Interactive selection UI (optional, install with `./install.sh --install-deps`)
 
-The installer automatically handles dependencies via `npm install` or `bun install`.
+Core functionality works without optional dependencies (text fallback UI is built in).
 
 ## Telemetry Disclosure
 
-> **Notice:** Agent Registry collects anonymous usage data to help improve the tool.
-> This is **enabled by default** but can be easily disabled.
+> **Notice:** Agent Registry can collect anonymous usage data to help improve the tool.
+> This is **disabled by default** and only runs when explicitly enabled.
 
 ### What We Collect
 
@@ -378,7 +380,7 @@ We collect **anonymous, aggregate metrics only**:
 | Result counts | `5 results` | Understand search effectiveness |
 | Timing | `45ms` | Monitor performance |
 | System info | `darwin`, `bun 1.x` | Ensure compatibility |
-| Tool version | `2.0.0` | Track adoption |
+| Tool version | `2.0.1` | Track adoption |
 
 ### What We Do NOT Collect
 
@@ -388,17 +390,22 @@ We collect **anonymous, aggregate metrics only**:
 - **No IP addresses** - We don't track your location
 - **No personal information** - Completely anonymous
 
+### Enable Telemetry (Optional)
+
+```bash
+# Explicit opt-in
+export AGENT_REGISTRY_TELEMETRY=1
+```
+
 ### Disable Telemetry
 
 ```bash
-# Option 1: Tool-specific
-export AGENT_REGISTRY_NO_TELEMETRY=1
+# Remove opt-in
+unset AGENT_REGISTRY_TELEMETRY
 
-# Option 2: Universal standard (works with other tools too)
+# Universal standard (also respected)
 export DO_NOT_TRACK=1
 ```
-
-Add to your `~/.bashrc` or `~/.zshrc` to disable permanently.
 
 ### Automatic Opt-Out
 

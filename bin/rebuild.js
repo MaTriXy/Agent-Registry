@@ -39,6 +39,7 @@ function scanAgents() {
 
 function buildRegistry(agents) {
   const skillDir = getSkillDir();
+  const agentsDir = getAgentsDir();
 
   const registry = {
     version: 1,
@@ -55,9 +56,12 @@ function buildRegistry(agents) {
   for (const agent of agents) {
     let relPath;
     try {
-      relPath = path.relative(skillDir, agent.path);
+      relPath = path.relative(agentsDir, agent.path);
+      if (relPath === "" || relPath === "." || relPath === ".." || relPath.startsWith(".." + path.sep)) {
+        relPath = agent.filename;
+      }
     } catch {
-      relPath = agent.path;
+      relPath = agent.filename;
     }
 
     registry.agents.push({

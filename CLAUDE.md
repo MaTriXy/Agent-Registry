@@ -32,7 +32,7 @@ The `hooks/user_prompt_search.js` hook runs on Bun (Claude Code's runtime) autom
   - `registry.js` — Path utilities and registry I/O (read/write registry.json, resolve skill paths).
   - `parse.js` — Agent file parsing (extract frontmatter, summary, keywords, token estimates).
   - `search.js` — BM25 + keyword matching search engine. Custom BM25 implementation (no external dependencies).
-  - `telemetry.js` — Fire-and-forget anonymous telemetry using fetch. Opt-out via `AGENT_REGISTRY_NO_TELEMETRY=1` or `DO_NOT_TRACK=1`.
+  - `telemetry.js` — Fire-and-forget anonymous telemetry using fetch. Disabled by default; opt-in via `AGENT_REGISTRY_TELEMETRY=1`. Also respects `AGENT_REGISTRY_NO_TELEMETRY=1` and `DO_NOT_TRACK=1`.
 - **`bin/`** — CLI entry points (run via `bun bin/X.js`):
   - `init.js` — Interactive migration wizard with @clack/prompts UI (paginated, category-grouped). Scans `~/.claude/agents/` and `.claude/agents/`, builds the index.
   - `search.js` — Search agents by intent using BM25.
@@ -44,7 +44,7 @@ The `hooks/user_prompt_search.js` hook runs on Bun (Claude Code's runtime) autom
 - **`hooks/`** — Hook scripts that integrate with Claude Code's event system:
   - `user_prompt_search.js` — `UserPromptSubmit` hook (Bun). Automatically searches the registry on each user prompt using an in-process BM25 engine. Injects matching agents (score >= 0.5) as `additionalContext`. Fails silently on errors.
 - **`SKILL.md`** — Skill definition with YAML frontmatter consumed by Claude Code's skill system. Includes hook registration in the `hooks` frontmatter key.
-- **`install.sh`** — Bash installer that copies files to `~/.claude/skills/agent-registry/`, creates directory structure, and runs `npm install` for dependencies.
+- **`install.sh`** — Bash installer that copies files to `~/.claude/skills/agent-registry/`, creates directory structure, and only installs optional dependencies when `--install-deps` is passed.
 
 ### Search Algorithm
 
@@ -52,7 +52,7 @@ The `hooks/user_prompt_search.js` hook runs on Bun (Claude Code's runtime) autom
 
 ### Telemetry
 
-All CLI scripts import `telemetry.track()` from `lib/telemetry.js` which sends anonymous metrics (event type, result count, timing, OS, runtime version) to a remote endpoint via fire-and-forget fetch calls. Never sends search queries, agent names, or file paths.
+CLI scripts call `telemetry.track()` from `lib/telemetry.js`, but network events are sent only if `AGENT_REGISTRY_TELEMETRY=1` is set. Payload remains anonymous (event type, result count, timing, OS, runtime version) and excludes search queries, agent names, and file paths.
 
 ## Commands
 
@@ -63,7 +63,8 @@ bun bin/search.js "query terms"
 bun bin/get.js <agent-name>
 bun bin/list.js
 bun bin/rebuild.js
-bun bin/init.js                    # Interactive migration
+bun bin/init.js                    # Interactive migration (non-destructive copy)
+bun bin/init.js --move             # Destructive move (explicit opt-in)
 ```
 
 ### Run tests
@@ -75,14 +76,15 @@ bun test                  # 101 tests across 5 files (unit + CLI integration)
 ### Install
 
 ```bash
-./install.sh              # User-level install to ~/.claude/skills/agent-registry/
-./install.sh --project    # Project-level install to .claude/skills/agent-registry/
+./install.sh                 # User-level install to ~/.claude/skills/agent-registry/
+./install.sh --project       # Project-level install to .claude/skills/agent-registry/
+./install.sh --install-deps  # Optional: install @clack/prompts
 ```
 
 ### Disable telemetry during development
 
 ```bash
-AGENT_REGISTRY_NO_TELEMETRY=1 bun bin/search.js "query"
+AGENT_REGISTRY_TELEMETRY=1 bun bin/search.js "query"
 ```
 
 ## Development Notes
